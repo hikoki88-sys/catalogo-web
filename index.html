@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Catálogo | Lux Shoes</title>
+
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#fafafa;margin:0;color:#111}
+header{background:#fff;border-bottom:1px solid #e5e5e5;padding:15px;text-align:center;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:22px}
+header p{margin:5px 0 0;color:#666;font-size:14px}
+.container{padding:16px;max-width:1200px;margin:auto}
+.search{width:100%;padding:12px;font-size:16px;margin-bottom:14px;border-radius:8px;border:1px solid #ccc}
+.categories{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px}
+.categories button{padding:8px 14px;border-radius:20px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap}
+.categories button.active{background:#111;color:#fff;border-color:#111}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.card{background:#fff;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.06);overflow:hidden;display:flex;flex-direction:column}
+.card img{width:100%;height:180px;object-fit:cover;background:#f0f0f0}
+.card-content{padding:12px;flex:1;display:flex;flex-direction:column}
+.card h3{margin:0 0 6px;font-size:15px}
+.price{font-weight:bold;margin-bottom:4px}
+.quality{font-size:13px;color:#555;margin-bottom:8px}
+.tallas{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tallas button{padding:6px 8px;border-radius:6px;border:1px solid #ccc;background:#f7f7f7;cursor:pointer;font-size:13px}
+.tallas button.active{background:#111;color:#fff;border-color:#111}
+.buy{margin-top:auto;background:#25D366;color:#fff;border:none;padding:10px;font-size:15px;border-radius:8px;cursor:pointer;width:100%}
+.buy:disabled{background:#aaa;cursor:not-allowed}
+footer{text-align:center;color:#888;font-size:12px;padding:20px}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Catálogo Mayorista</h1>
+  <p>Selecciona tu modelo y compra por WhatsApp</p>
+</header>
+
+<div class="container">
+  <input type="text" id="search" class="search" placeholder="Buscar modelo..." />
+  <div id="categories" class="categories"></div>
+  <div id="productos" class="grid"></div>
+</div>
+
+<footer>
+  © Catálogo online – pedidos por WhatsApp
+</footer>
+
+<script>
+const WSP_NUMERO = "51900000000"; // CAMBIA TU NÚMERO
+const CSV_PATH = "data/catalogo.csv"; // archivo exportado desde Excel
+
+let productos = [];
+let categoriaActual = "Todos";
+
+fetch(CSV_PATH)
+  .then(r=>r.text())
+  .then(text=>{
+    productos = parseCSV(text);
+    renderCategorias();
+    renderProductos();
+  });
+
+function parseCSV(text){
+  const lines = text.trim().split("\n");
+  const headers = lines.shift().split(",");
+  return lines.map(l=>{
+    const values = l.split(",");
+    const obj = {};
+    headers.forEach((h,i)=>obj[h.trim()] = values[i]?.trim());
+    obj.precio = Number(obj.precio);
+    obj.tallas = obj.tallas.split(";").join(",").split(",").map(t=>t.trim());
+    return obj;
+  });
+}
+
+function renderCategorias(){
+  const cats = ["Todos", ...new Set(productos.map(p=>p.categoria))];
+  const cont = document.getElementById("categories");
+  cont.innerHTML = "";
+  cats.forEach(c=>{
+    const b = document.createElement("button");
+    b.textContent = c;
+    b.className = c===categoriaActual ? "active" : "";
+    b.onclick = ()=>{categoriaActual=c;renderCategorias();renderProductos();};
+    cont.appendChild(b);
+  });
+}
+
+function renderProductos(){
+  const grid = document.getElementById("productos");
+  const q = document.getElementById("search").value.toLowerCase();
+  grid.innerHTML = "";
+
+  productos.filter(p=>{
+    return (categoriaActual==="Todos"||p.categoria===categoriaActual)
+      && p.nombre.toLowerCase().includes(q);
+  }).forEach(p=>{
+    let tallaSel=null;
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <img src="img/${p.imagen}" alt="${p.nombre}">
+      <div class="card-content">
+        <h3>${p.nombre}</h3>
+        <div class="price">S/. ${p.precio}</div>
+        <div class="quality">Calidad: ${p.calidad}</div>
+        <div class="tallas"></div>
+        <button class="buy" disabled>Comprar por WhatsApp</button>
+      </div>`;
+
+    const tDiv=card.querySelector(".tallas");
+    const btn=card.querySelector(".buy");
+
+    p.tallas.forEach(t=>{
+      const b=document.createElement("button");
+      b.textContent=t;
+      b.onclick=()=>{
+        tallaSel=t;
+        tDiv.querySelectorAll("button").forEach(x=>x.classList.remove("active"));
+        b.classList.add("active");
+        btn.disabled=false;
+      };
+      tDiv.appendChild(b);
+    });
+
+    btn.onclick=()=>{
+      const msg=`Hola, quiero comprar:%0AModelo: ${p.nombre}%0ACategoría: ${p.categoria}%0ACalidad: ${p.calidad}%0ATalla: ${tallaSel}%0APrecio: S/.${p.precio}`;
+      window.open(`https://wa.me/${WSP_NUMERO}?text=${msg}`,"_blank");
+    };
+
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById("search").addEventListener("input",renderProductos);
+</script>
+</body>
+</html>
