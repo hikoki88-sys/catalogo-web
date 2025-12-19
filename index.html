@@ -66,11 +66,11 @@ function parseCSV(text){
   const lines = text.trim().split("\n");
   const headers = lines.shift().split(";");
   return lines.map(l=>{
-    const values = l.split(",");
+    const values = l.split(";");
     const obj = {};
     headers.forEach((h,i)=>obj[h.trim()] = values[i]?.trim());
     obj.precio = Number(obj.precio);
-    obj.tallas = obj.tallas.split(";").join(",").split(",").map(t=>t.trim());
+    obj.tallas = obj.tallas.split(";").join(";").split(";").map(t=>t.trim());
     return obj;
   });
 }
