@@ -2,53 +2,57 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Lux Kicks Store</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo Mayorista</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{
-    font-family: Arial, sans-serif;
-    background:#fff;
-    margin:0;
-    padding:20px;
+  font-family: Arial, sans-serif;
+  background:#fff;
+  margin:0;
+  padding:20px;
 }
 h1{
-    text-align:center;
+  text-align:center;
 }
-input{
-    width:100%;
-    padding:12px;
-    margin:20px 0;
-    font-size:16px;
+input, select{
+  width:100%;
+  padding:10px;
+  margin:10px 0;
 }
-#categories{
-    margin-bottom:20px;
+#filters{
+  text-align:center;
+  margin-bottom:20px;
 }
 button{
-    padding:8px 14px;
-    margin:5px;
-    border:none;
-    background:#000;
-    color:#fff;
-    cursor:pointer;
+  padding:8px 14px;
+  margin:4px;
+  border:none;
+  background:#000;
+  color:#fff;
+  cursor:pointer;
 }
-#products{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-    gap:20px;
+button.active{
+  background:#444;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:20px;
 }
 .card{
-    border:1px solid #ddd;
-    padding:15px;
+  border:1px solid #ddd;
+  padding:15px;
+  border-radius:8px;
 }
 .card img{
-    width:100%;
-    height:220px;
-    object-fit:contain;
-    background:#f5f5f5;
+  width:100%;
+  height:200px;
+  object-fit:contain;
 }
 .price{
-    font-weight:bold;
+  font-weight:bold;
+  margin:5px 0;
 }
 </style>
 </head>
@@ -56,99 +60,115 @@ button{
 <body>
 
 <h1>Catálogo Mayorista</h1>
-<p style="text-align:center;">Selecciona tu modelo y compra por WhatsApp</p>
+<p style="text-align:center">Selecciona tu modelo y compra por WhatsApp</p>
 
-<input type="text" id="search" placeholder="Buscar modelo...">
+<input id="search" placeholder="Buscar modelo...">
 
-<div id="categories"></div>
+<div id="filters">
+  <button onclick="setQuality('')" class="active">Todos</button>
+  <button onclick="setQuality('PK')">PK</button>
+  <button onclick="setQuality('LJR')">LJR</button>
+</div>
 
-<div id="products"></div>
+<div id="products" class="grid"></div>
 
 <script>
 const CSV_PATH = "data/catalogo.csv";
-const IMG_PATH = "img/";
-const WHATSAPP_NUMBER = "51994275618"; // ← cambia por tu número
+const WSP_NUMBER = "51994275618";
 
-let products = [];
-let currentCategory = "todos";
+let productos = [];
+let filtroCalidad = "";
 
-// ---------- CARGAR CSV ----------
 fetch(CSV_PATH)
-.then(r => r.text())
-.then(text => {
-    products = parseCSV(text);
-    renderCategories();
-    renderProducts();
-});
+  .then(r => r.text())
+  .then(text => {
+    productos = parseCSV(text);
+    render();
+  });
 
-// ---------- PARSE CSV ----------
 function parseCSV(text){
-    const lines = text.trim().split("\n");
-    const headers = lines.shift().split(";");
+  const lines = text.trim().split("\n");
+  const headers = lines.shift().split(";");
 
-    return lines.map(line => {
-        const values = line.split(";");
-        let obj = {};
-        headers.forEach((h,i)=>{
-            obj[h.trim()] = values[i] ? values[i].trim() : "";
-        });
-        return obj;
+  return lines.map(line=>{
+    const values = line.split(";");
+    const obj = {};
+    headers.forEach((h,i)=>{
+      if(h==="tallas"){
+        obj[h] = values[i] ? values[i].split(",").map(t=>t.trim()) : [];
+      }else{
+        obj[h] = values[i] ? values[i].trim() : "";
+      }
     });
+    return obj;
+  });
 }
 
-// ---------- CATEGORÍAS ----------
-function renderCategories(){
-    const cats = ["todos", ...new Set(products.map(p => p.categoria.toLowerCase()))];
-    const cont = document.getElementById("categories");
-    cont.innerHTML = "";
-
-    cats.forEach(cat=>{
-        const btn = document.createElement("button");
-        btn.textContent = cat.toUpperCase();
-        btn.onclick = () => {
-            currentCategory = cat;
-            renderProducts();
-        };
-        cont.appendChild(btn);
-    });
+function setQuality(q){
+  filtroCalidad = q;
+  document.querySelectorAll("#filters button").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  render();
 }
 
-// ---------- PRODUCTOS ----------
-function renderProducts(){
-    const cont = document.getElementById("products");
-    const search = document.getElementById("search").value.toLowerCase();
-    cont.innerHTML = "";
+document.getElementById("search").addEventListener("input",render);
 
-    products
-    .filter(p => currentCategory === "todos" || p.categoria.toLowerCase() === currentCategory)
+function render(){
+  const cont = document.getElementById("products");
+  cont.innerHTML = "";
+
+  const search = document.getElementById("search").value.toLowerCase();
+
+  productos
+    .filter(p => (!filtroCalidad || p.calidad === filtroCalidad))
     .filter(p => p.nombre.toLowerCase().includes(search))
-    .forEach(p=>{
-        const card = document.createElement("div");
-        card.className = "card";
+    .forEach((p,i)=>{
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <img src="img/${p.imagen}" alt="${p.nombre}">
+        <h3>${p.nombre}</h3>
+        <div class="price">S/ ${p.precio}</div>
+        <div>Calidad: ${p.calidad}</div>
 
-        const img = p.imagen 
-            ? `<img src="${IMG_PATH + p.imagen}" alt="${p.nombre}" onerror="this.style.display='none'">`
-            : "";
+        <label>Talla:</label>
+        <select id="talla-${i}">
+          <option value="">Seleccionar talla</option>
+          ${p.tallas.map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
 
-        card.innerHTML = `
-            ${img}
-            <h3>${p.nombre}</h3>
-            <p class="price">S/. ${p.precio}</p>
-            <p>Calidad: ${p.calidad}</p>
-            <p>Tallas: ${p.tallas}</p>
-            <button onclick="buy('${p.nombre}','${p.precio}','${p.tallas}')">Comprar</button>
-        `;
-        cont.appendChild(card);
+        <button onclick="comprar(
+          '${p.nombre}',
+          '${p.calidad}',
+          '${p.precio}',
+          'talla-${i}'
+        )">Comprar por WhatsApp</button>
+      `;
+      cont.appendChild(div);
     });
 }
 
-// ---------- WHATSAPP ----------
-function buy(nombre,precio,tallas){
-    const msg = `Hola, quiero comprar:\nModelo: ${nombre}\nPrecio: S/. ${precio}\nTallas disponibles: ${tallas}`;
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`);
-}
+function comprar(nombre, calidad, precio, tallaId){
+  const talla = document.getElementById(tallaId).value;
+  if(!talla){
+    alert("Selecciona una talla");
+    return;
+  }
 
-document.getElementById("search").addEventListener("input", renderProducts);
+  const msg = `
+Hola, quiero comprar:
+
+👟 Modelo: ${nombre}
+⭐ Calidad: ${calidad}
+📏 Talla: ${talla}
+💰 Precio: S/ ${precio}
+  `;
+
+  window.open(
+    `https://wa.me/${WSP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+}
 </script>
 
 </body>
