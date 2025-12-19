@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Catálogo Mayorista</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
@@ -12,22 +12,23 @@ body{
   margin:0;
   padding:20px;
 }
-h1{text-align:center;}
-.filters{text-align:center;margin:15px 0;}
+h1{text-align:center}
+.filters{text-align:center;margin-bottom:20px}
 .filters button{
-  margin:5px;
   padding:8px 14px;
+  margin:4px;
+  border:1px solid #000;
+  background:#fff;
   cursor:pointer;
 }
-#search{
-  width:100%;
-  padding:10px;
-  margin:15px 0;
+.filters button.active{
+  background:#000;
+  color:#fff;
 }
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-  gap:15px;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:20px;
 }
 .card{
   border:1px solid #ddd;
@@ -36,15 +37,21 @@ h1{text-align:center;}
 .card img{
   width:100%;
   height:180px;
-  object-fit:contain;
-  background:#f5f5f5;
+  object-fit:cover;
+  background:#f3f3f3;
 }
-.card h3{margin:8px 0;}
-.price{font-weight:bold;}
-select,button{
+.card h3{margin:8px 0;font-size:16px}
+.card p{margin:4px 0;font-size:14px}
+select,button.buy{
   width:100%;
   padding:8px;
   margin-top:6px;
+}
+button.buy{
+  background:#000;
+  color:#fff;
+  border:none;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -53,102 +60,86 @@ select,button{
 
 <h1>Catálogo Mayorista</h1>
 
-<input id="search" placeholder="Buscar modelo..." />
-
 <div class="filters">
-  <button onclick="setQuality('')">Todos</button>
+  <button onclick="setQuality('ALL')" class="active">Todos</button>
   <button onclick="setQuality('PK')">PK</button>
   <button onclick="setQuality('LJR')">LJR</button>
 </div>
 
-<div class="grid" id="grid"></div>
+<div id="grid" class="grid"></div>
 
 <script>
-const CSV_PATH = "./data/catalogo.csv";
+const CSV_PATH = "data/catalogo.csv";
 const WHATSAPP = "51994275618";
 
 let products = [];
-let qualityFilter = "";
-let searchText = "";
+let currentQuality = "ALL";
 
 fetch(CSV_PATH)
-  .then(r => r.text())
+  .then(res => res.text())
   .then(text => {
     products = parseCSV(text);
     render();
-  })
-  .catch(err => {
-    console.error("Error cargando CSV", err);
   });
 
 function parseCSV(text){
   const lines = text.trim().split("\n");
   const headers = lines.shift().split(";");
   return lines.map(line=>{
-    const cols = line.split(";");
+    const values = line.split(";");
     const obj = {};
-    headers.forEach((h,i)=> obj[h.trim()] = (cols[i]||"").trim());
+    headers.forEach((h,i)=>obj[h]=values[i]||"");
     obj.tallas = obj.tallas ? obj.tallas.split(",") : [];
     return obj;
   });
 }
 
 function setQuality(q){
-  qualityFilter = q;
+  currentQuality = q;
+  document.querySelectorAll(".filters button").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
   render();
 }
-
-document.getElementById("search").addEventListener("input",e=>{
-  searchText = e.target.value.toLowerCase();
-  render();
-});
 
 function render(){
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
 
   products
-    .filter(p => !qualityFilter || p.calidad === qualityFilter)
-    .filter(p => p.nombre.toLowerCase().includes(searchText))
+    .filter(p => currentQuality==="ALL" || p.calidad===currentQuality)
     .forEach(p=>{
       const card = document.createElement("div");
-      card.className = "card";
+      card.className="card";
+
+      const imgSrc = p.imagen ? `img/${p.imagen}` : "";
 
       card.innerHTML = `
-        <img src="img/${p.imagen}" onerror="this.src='';this.style.display='none'">
+        <img src="${imgSrc}" onerror="this.style.display='none'">
         <h3>${p.nombre}</h3>
-        <div>Calidad: ${p.calidad}</div>
-        <div class="price">S/ ${p.precio}</div>
-
-        <select id="talla-${p.nombre}">
+        <p>Precio: S/. ${p.precio}</p>
+        <p>Calidad: ${p.calidad}</p>
+        <select>
           <option value="">Selecciona talla</option>
           ${p.tallas.map(t=>`<option value="${t}">${t}</option>`).join("")}
         </select>
-
-        <button onclick="buy('${p.nombre}','${p.precio}','${p.calidad}','${p.imagen}')">
-          Comprar por WhatsApp
-        </button>
+        <button class="buy">Comprar por WhatsApp</button>
       `;
-      grid.appendChild(card);
-    });
-}
 
-function buy(nombre,precio,calidad,imagen){
-  const select = document.querySelector(`#talla-${CSS.escape(nombre)}`);
-  const talla = select.value;
-  if(!talla){
-    alert("Selecciona una talla");
-    return;
-  }
+      card.querySelector(".buy").onclick = ()=>{
+        const talla = card.querySelector("select").value;
+        if(!talla){ alert("Selecciona una talla"); return; }
 
-  const msg = `Hola, quiero comprar:
-Modelo: ${nombre}
-Calidad: ${calidad}
-Precio: S/ ${precio}
+        const msg = `Hola, quiero comprar:
+Modelo: ${p.nombre}
+Calidad: ${p.calidad}
+Precio: S/. ${p.precio}
 Talla: ${talla}`;
 
-  const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
-  window.open(url,"_blank");
+        window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
+      };
+
+      grid.appendChild(card);
+    });
 }
 </script>
 
