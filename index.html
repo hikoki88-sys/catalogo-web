@@ -72,7 +72,7 @@ const WHATSAPP = "51994275618";
 let productos = [];
 let filtro = "ALL";
 
-fetch("data/catalogo.csv")
+fetch("./data/catalogo.csv")
   .then(r => r.text())
   .then(text => {
     productos = parseCSV(text);
