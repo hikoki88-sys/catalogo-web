@@ -54,23 +54,26 @@ const CSV_PATH = "data/catalogo.csv"; // archivo exportado desde Excel
 let productos = [];
 let categoriaActual = "Todos";
 
-fetch(CSV_PATH)
-  .then(r=>r.text())
-  .then(text=>{
-    productos = parseCSV(text);
+fetch('data/catalogo.csv')
+  .then(r => r.text())
+  .then(text => {
+    products = parseCSV(text);
     renderCategorias();
     renderProductos();
-  });
+  })
+  .catch(err => console.error('Error cargando CSV:', err));
 
-function parseCSV(text){
-  const lines = text.trim().split("\n");
-  const headers = lines.shift().split(";");
-  return lines.map(l=>{
-    const values = l.split(";");
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(';');
+
+  return lines.slice(1).map(line => {
+    const values = line.split(';');
     const obj = {};
-    headers.forEach((h,i)=>obj[h.trim()] = values[i]?.trim());
-    obj.precio = Number(obj.precio);
-    obj.tallas = obj.tallas.split(";").join(";").split(";").map(t=>t.trim());
+    headers.forEach((h, i) => {
+      obj[h.trim()] = values[i] ? values[i].trim() : '';
+    });
     return obj;
   });
 }
