@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Catálogo Mayorista</title>
+<title>Lux Kicks Store</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -14,18 +14,18 @@ body{
 }
 h1{text-align:center}
 
-.filters{
+.controls{
   display:flex;
+  flex-wrap:wrap;
   gap:10px;
   justify-content:center;
   margin-bottom:20px;
 }
 
-.filters button{
-  padding:8px 16px;
+input, select, button{
+  padding:8px;
   border:1px solid #000;
   background:#fff;
-  cursor:pointer;
 }
 
 .grid{
@@ -49,19 +49,24 @@ h1{text-align:center}
 .card h3{margin:10px 0 5px}
 .card p{margin:4px 0}
 
-select, button.buy{
+.buy{
   width:100%;
   margin-top:8px;
-  padding:8px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Catálogo Mayorista</h1>
+<h1>Lux Kicks Store</h1>
 
-<div class="filters">
+<div class="controls">
+  <input type="text" id="search" placeholder="Buscar modelo..." oninput="render()">
+
+  <select id="categoria" onchange="render()">
+    <option value="ALL">Todas las categorías</option>
+  </select>
+
   <button onclick="setQuality('ALL')">Todos</button>
   <button onclick="setQuality('PK')">PK</button>
   <button onclick="setQuality('LJR')">LJR</button>
@@ -78,6 +83,7 @@ fetch("data/catalogo.csv")
 .then(res => res.text())
 .then(text => {
   productos = parseCSV(text);
+  cargarCategorias();
   render();
 });
 
@@ -92,6 +98,17 @@ function parseCSV(text){
   });
 }
 
+function cargarCategorias(){
+  const select = document.getElementById("categoria");
+  const cats = [...new Set(productos.map(p=>p.categoria.toLowerCase()))];
+  cats.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c.toUpperCase();
+    select.appendChild(opt);
+  });
+}
+
 function setQuality(q){
   filtroCalidad = q;
   render();
@@ -101,8 +118,15 @@ function render(){
   const cont = document.getElementById("catalogo");
   cont.innerHTML = "";
 
+  const search = document.getElementById("search").value.toLowerCase();
+  const categoria = document.getElementById("categoria").value;
+
   productos
-  .filter(p => filtroCalidad==="ALL" || p.calidad===filtroCalidad)
+  .filter(p =>
+    (filtroCalidad==="ALL" || p.calidad===filtroCalidad) &&
+    (categoria==="ALL" || p.categoria.toLowerCase()===categoria) &&
+    p.nombre.toLowerCase().includes(search)
+  )
   .forEach(p => {
 
     const tallas = p.tallas ? p.tallas.split(",") : [];
@@ -112,41 +136,43 @@ function render(){
 
     const img = document.createElement("img");
     img.src = "img/" + p.imagen;
-    img.onerror = () => img.style.display="none";
+    img.onerror = ()=> img.style.display="none";
 
-    const select = document.createElement("select");
-    select.innerHTML = `<option value="">Selecciona talla</option>`;
+    const selectTalla = document.createElement("select");
+    selectTalla.innerHTML = `<option value="">Selecciona talla</option>`;
     tallas.forEach(t=>{
       const opt = document.createElement("option");
       opt.value = t;
       opt.textContent = t;
-      select.appendChild(opt);
+      selectTalla.appendChild(opt);
     });
 
     const btn = document.createElement("button");
     btn.className = "buy";
     btn.textContent = "Comprar por WhatsApp";
     btn.onclick = ()=>{
-      if(!select.value){
+      if(!selectTalla.value){
         alert("Selecciona una talla");
         return;
       }
       const msg =
 `Hola, quiero comprar:
 Modelo: ${p.nombre}
+Categoría: ${p.categoria}
 Precio: S/.${p.precio}
 Calidad: ${p.calidad}
-Talla: ${select.value}`;
+Talla: ${selectTalla.value}`;
       window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
     };
 
     card.appendChild(img);
     card.innerHTML += `
       <h3>${p.nombre}</h3>
+      <p>Categoría: ${p.categoria}</p>
       <p>Precio: S/.${p.precio}</p>
       <p>Calidad: ${p.calidad}</p>
     `;
-    card.appendChild(select);
+    card.appendChild(selectTalla);
     card.appendChild(btn);
 
     cont.appendChild(card);
