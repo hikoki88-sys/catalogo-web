@@ -64,7 +64,7 @@ fetch(CSV_PATH)
 
 function parseCSV(text){
   const lines = text.trim().split("\n");
-  const headers = lines.shift().split(",");
+  const headers = lines.shift().split(";");
   return lines.map(l=>{
     const values = l.split(",");
     const obj = {};
