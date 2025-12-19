@@ -2,82 +2,77 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Catálogo Mayorista</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{
-  font-family: Arial, sans-serif;
+  font-family:Arial, sans-serif;
   background:#fff;
+  margin:0;
   padding:20px;
 }
-h1{text-align:center}
-input, select{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
+h1{text-align:center;margin-bottom:10px}
+.filters{
+  text-align:center;
+  margin-bottom:20px;
 }
-#filters{text-align:center;margin-bottom:20px}
 button{
   padding:8px 14px;
-  margin:4px;
-  border:none;
-  background:#000;
-  color:#fff;
+  margin:5px;
+  border:1px solid #000;
+  background:#fff;
   cursor:pointer;
 }
-button.active{background:#444}
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-  gap:20px;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:15px;
 }
 .card{
   border:1px solid #ddd;
-  padding:15px;
-  border-radius:8px;
+  padding:12px;
 }
 .card img{
   width:100%;
-  height:180px;
-  object-fit:contain;
-  background:#f5f5f5;
+  height:160px;
+  object-fit:cover;
+  background:#f2f2f2;
 }
-.no-img{
-  height:180px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#f5f5f5;
-  color:#888;
+select{
+  width:100%;
+  padding:6px;
+  margin-top:6px;
 }
-.price{font-weight:bold;margin:6px 0}
+.buy{
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  background:#25D366;
+  color:#fff;
+  border:none;
+}
 </style>
 </head>
 
 <body>
 
 <h1>Catálogo Mayorista</h1>
-<p style="text-align:center">Selecciona tu modelo</p>
 
-<input id="search" placeholder="Buscar modelo...">
-
-<div id="filters">
-  <button onclick="setQuality('')" class="active">Todos</button>
+<div class="filters">
+  <button onclick="setQuality('ALL')">Todos</button>
   <button onclick="setQuality('PK')">PK</button>
   <button onclick="setQuality('LJR')">LJR</button>
 </div>
 
-<div id="products" class="grid"></div>
+<div class="grid" id="grid"></div>
 
 <script>
-const CSV_PATH = "data/catalogo.csv";
-const WSP = "51994275618";
-
+const WHATSAPP = "51994275618";
 let productos = [];
-let filtro = "";
+let filtro = "ALL";
 
-fetch(CSV_PATH)
+fetch("data/catalogo.csv")
   .then(r => r.text())
   .then(text => {
     productos = parseCSV(text);
@@ -88,89 +83,68 @@ function parseCSV(text){
   const lines = text.trim().split("\n");
   const headers = lines.shift().split(";");
 
-  return lines
-    .filter(l => l.trim() !== "")
-    .map(line=>{
-      const values = line.split(";");
-      const obj = {};
-      headers.forEach((h,i)=>{
-        if(h==="tallas"){
-          obj[h] = values[i]
-            ? values[i].split(",").map(t=>t.trim())
-            : [];
-        }else{
-          obj[h] = values[i] ? values[i].trim() : "";
-        }
-      });
-      return obj;
+  return lines.map(line=>{
+    const data = line.split(";");
+    let obj = {};
+    headers.forEach((h,i)=>{
+      if(h === "tallas"){
+        obj.tallas = data[i] ? data[i].split(",").map(t=>t.trim()) : [];
+      }else{
+        obj[h] = data[i] ? data[i].trim() : "";
+      }
     });
+    return obj;
+  });
 }
 
 function setQuality(q){
   filtro = q;
-  document.querySelectorAll("#filters button").forEach(b=>b.classList.remove("active"));
-  event.target.classList.add("active");
   render();
 }
 
-document.getElementById("search").addEventListener("input",render);
-
 function render(){
-  const cont = document.getElementById("products");
-  cont.innerHTML = "";
-
-  const search = document.getElementById("search").value.toLowerCase();
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
 
   productos
-    .filter(p => !filtro || p.calidad === filtro)
-    .filter(p => p.nombre.toLowerCase().includes(search))
+    .filter(p => filtro==="ALL" || p.calidad===filtro)
     .forEach((p,i)=>{
       const div = document.createElement("div");
       div.className = "card";
 
-      const imagen = p.imagen
-        ? `<img src="img/${p.imagen}" onerror="this.outerHTML='<div class=no-img>Sin imagen</div>'">`
-        : `<div class="no-img">Sin imagen</div>`;
-
-      const tallas = (p.tallas && p.tallas.length)
-        ? `<select id="talla-${i}">
-             <option value="">Selecciona talla</option>
-             ${p.tallas.map(t=>`<option>${t}</option>`).join("")}
-           </select>`
-        : `<div style="color:#888">Sin tallas registradas</div>`;
-
       div.innerHTML = `
-        ${imagen}
-        <h3>${p.nombre}</h3>
-        <div class="price">S/ ${p.precio}</div>
-        <div>Calidad: ${p.calidad}</div>
-        ${tallas}
-        <button onclick="comprar('${p.nombre}','${p.calidad}','${p.precio}','talla-${i}')">
+        ${p.imagen ? `<img src="img/${p.imagen}">` : `<div style="height:160px;background:#eee"></div>`}
+        <strong>${p.nombre}</strong><br>
+        Calidad: ${p.calidad}<br>
+        Precio: S/ ${p.precio}
+
+        <select id="talla-${i}">
+          <option value="">Selecciona talla</option>
+          ${p.tallas.map(t=>`<option value="${t}">${t}</option>`).join("")}
+        </select>
+
+        <button class="buy" onclick="comprar('${p.nombre}','${p.calidad}','${p.precio}',${i})">
           Comprar por WhatsApp
         </button>
       `;
-      cont.appendChild(div);
+      grid.appendChild(div);
     });
 }
 
-function comprar(nombre, calidad, precio, tallaId){
-  const sel = document.getElementById(tallaId);
-  const talla = sel ? sel.value : "";
-
+function comprar(nombre, calidad, precio, i){
+  const talla = document.getElementById(`talla-${i}`).value;
   if(!talla){
     alert("Selecciona una talla");
     return;
   }
 
-  const msg = `
-Hola, quiero comprar:
-👟 Modelo: ${nombre}
-⭐ Calidad: ${calidad}
-📏 Talla: ${talla}
-💰 Precio: S/ ${precio}
-`;
+  const msg = `Hola, quiero comprar:
+Modelo: ${nombre}
+Calidad: ${calidad}
+Talla: ${talla}
+Precio: S/ ${precio}`;
 
-  window.open(`https://wa.me/${WSP}?text=${encodeURIComponent(msg)}`,"_blank");
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
 }
 </script>
 
