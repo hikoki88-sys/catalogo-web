@@ -58,7 +58,7 @@ input, select, button{
 
 <body>
 
-<title>Lux Kicks Store</title>
+<h1>Lux Kicks Store</h1>
 
 <div class="controls">
   <input type="text" id="search" placeholder="Buscar modelo..." oninput="render()">
@@ -123,23 +123,39 @@ function render(){
 
   productos
   .filter(p =>
-    (filtroCalidad==="ALL" || p.calidad===filtroCalidad) &&
-    (categoria==="ALL" || p.categoria.toLowerCase()===categoria) &&
+    (filtroCalidad === "ALL" || p.calidad === filtroCalidad) &&
+    (categoria === "ALL" || p.categoria.toLowerCase() === categoria) &&
     p.nombre.toLowerCase().includes(search)
   )
   .forEach(p => {
 
-    const tallas = p.tallas ? p.tallas.split(",") : [];
+    // 🔥 AQUÍ ESTÁ LA CLAVE DE LAS TALLAS
+    const tallas = p.tallas
+      ? p.tallas.split(/[;,]/).map(t => t.trim())
+      : [];
 
     const card = document.createElement("div");
     card.className = "card";
 
     const img = document.createElement("img");
     img.src = "img/" + p.imagen;
-    img.onerror = ()=> img.style.display="none";
+    img.onerror = () => img.style.display = "none";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = p.nombre;
+
+    const pCat = document.createElement("p");
+    pCat.textContent = `Categoría: ${p.categoria}`;
+
+    const pPrecio = document.createElement("p");
+    pPrecio.textContent = `Precio: S/.${p.precio}`;
+
+    const pCalidad = document.createElement("p");
+    pCalidad.textContent = `Calidad: ${p.calidad}`;
 
     const selectTalla = document.createElement("select");
     selectTalla.innerHTML = `<option value="">Selecciona talla</option>`;
+
     tallas.forEach(t=>{
       const opt = document.createElement("option");
       opt.value = t;
@@ -155,6 +171,7 @@ function render(){
         alert("Selecciona una talla");
         return;
       }
+
       const msg =
 `Hola, quiero comprar:
 Modelo: ${p.nombre}
@@ -162,16 +179,18 @@ Categoría: ${p.categoria}
 Precio: S/.${p.precio}
 Calidad: ${p.calidad}
 Talla: ${selectTalla.value}`;
-      window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`);
+
+      window.open(
+        `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,
+        "_blank"
+      );
     };
 
     card.appendChild(img);
-    card.innerHTML += `
-      <h3>${p.nombre}</h3>
-      <p>Categoría: ${p.categoria}</p>
-      <p>Precio: S/.${p.precio}</p>
-      <p>Calidad: ${p.calidad}</p>
-    `;
+    card.appendChild(h3);
+    card.appendChild(pCat);
+    card.appendChild(pPrecio);
+    card.appendChild(pCalidad);
     card.appendChild(selectTalla);
     card.appendChild(btn);
 
